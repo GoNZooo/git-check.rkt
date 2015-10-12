@@ -4,6 +4,7 @@
          racket/port
          racket/system
          racket/match
+         racket/cmdline
          
          ; Threading macro (`~>`) by Jay McCarthy (jeapostrophe)
          ; https://github.com/jeapostrophe/exp/blob/master/threading-arrow.rkt
@@ -46,11 +47,23 @@
                           (cons last
                                 output))])]))
 
-(module+ main
-  (require racket/pretty)
+(define (announce path)
+  (printf "~a should be checked.~n"
+          path))
 
-  (pretty-print
-    (~> (current-directory)
-        find-git-directories
-        top-directories
-        (filter git-changed? <>))))
+(define root-dir (make-parameter (current-directory)))
+(define (command-line-options)
+  (command-line
+    #:once-each
+    [("-d" "--dir")
+     d
+     "Specify a root directory to search"
+     (root-dir (expand-user-path d))]))
+
+(module+ main
+  (command-line-options)
+  (for-each announce
+            (~> (root-dir)
+                find-git-directories
+                top-directories
+                (filter git-changed? <>))))

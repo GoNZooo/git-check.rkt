@@ -1,20 +1,25 @@
-#lang racket/base
+#lang typed/racket/base
 
 (require racket/file
          racket/port
          racket/system
          racket/match
          racket/cmdline
-         
+
          ; Threading macro (`~>`) by Jay McCarthy (jeapostrophe)
          ; https://github.com/jeapostrophe/exp/blob/master/threading-arrow.rkt
          jeapostrophe/threading-arrow)
 
+(: find-git-directories (->* () (Path-String) (Listof Path)))
 (define (find-git-directories [path "."])
-  (find-files (lambda (f)
-                (directory-exists? (build-path f ".git")))
+  (: has-git-dir? (-> (U Path-String 'up 'same) Boolean))
+  (define (has-git-dir? dir)
+    (directory-exists? (build-path dir ".git")))
+
+  (find-files has-git-dir?
               path))
 
+(: git-changed? (-> Path Boolean))
 (define (git-changed? path)
   (begin
     (define old-path (current-directory))
@@ -26,11 +31,12 @@
     (not (equal? git-status-output
                  ""))))
 
-(define (top-directories directories [last ""] [output '()])
+(: top-directories (->* ((Listof Path)) ((U Path False) (Listof Path))
+                        (U Null (Listof Path))))
+(define (top-directories directories [last #f] [output '()])
   (cond
     [(null? directories) output]
-    [(equal? last
-              "")
+    [(not last)
      (top-directories (cdr directories)
                       (car directories))]
     [else
@@ -47,18 +53,22 @@
                           (cons last
                                 output))])]))
 
+(: announce (-> Path Void))
 (define (announce path)
   (printf "~a should be checked.~n"
           path))
 
+(: root-dir (Parameterof Path))
 (define root-dir (make-parameter (current-directory)))
+
+(: command-line-options (-> Void))
 (define (command-line-options)
   (command-line
     #:once-each
     [("-d" "--dir")
      d
      "Specify a root directory to search"
-     (root-dir (expand-user-path d))]))
+     (root-dir (expand-user-path (cast d Path-String)))]))
 
 (module+ main
   (command-line-options)

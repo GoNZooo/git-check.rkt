@@ -12,7 +12,7 @@
 
 (: find-git-directories (->* () (Path-String) (Listof Path)))
 (define (find-git-directories [path "."])
-  (: has-git-dir? (-> (U Path-String 'up 'same) Boolean))
+  (: has-git-dir? (-> Path-String Boolean))
   (define (has-git-dir? dir)
     (directory-exists? (build-path dir ".git")))
 
@@ -66,9 +66,9 @@
   (command-line
     #:once-each
     [("-d" "--dir")
-     d
+     #{d : Path-String}
      "Specify a root directory to search"
-     (root-dir (expand-user-path (cast d Path-String)))]))
+     (root-dir (expand-user-path d))]))
 
 (module+ main
   (command-line-options)
